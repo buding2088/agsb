@@ -1,34 +1,63 @@
 import time
 from playwright.sync_api import sync_playwright
 
-# 1. 替换为你的 Streamlit 应用真实 URL
+# 1. 这里是你的真实 URL，不用改了
 APP_URL = "https://chyuy2rgszgsw6xrujaqvv.streamlit.app"
 
 def wake_up():
     with sync_playwright() as p:
-        # 启动无头浏览器
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        # 模拟真实的桌面浏览器
+        browser = p.chromium.launch(
+            headless=True,
+            args=['--no-sandbox', '--disable-setuid-sandbox']
+        )
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
         
         print(f"正在打开应用页面: {APP_URL}")
-        page.goto(APP_URL, timeout=60000)
-        
-        # 等待页面基础元素加载
-        time.sleep(8)
-        
-        # 查找是否有 "Wake it up" 唤醒按钮
-        # Streamlit 睡眠页面的按钮通常叫 "Wake it up" 或包含该文字
-        wake_button = page.locator('button:has-text("Wake it up")')
-        
-        if wake_button.count() > 0 and wake_button.is_visible():
-            print("检测到应用已睡眠，正在点击 'Wake it up' 按钮唤醒...")
-            wake_button.click()
-            # 唤醒启动容器需要一些时间，等待 20 秒确保容器加载完成
-            time.sleep(20)
-            print("唤醒指令已发送完成！")
-        else:
-            print("应用当前处于活跃状态（未睡眠），无需唤醒。")
+        try:
+            # 等待网络空闲
+            page.goto(APP_URL, wait_until="networkidle", timeout=60000)
+        except Exception as e:
+            print(f"页面加载超时或出错: {e}")
             
+        # --- 核心修改：留出更充足的时间让 Streamlit 渲染休眠页面 ---
+        # 增加等待时间到 20 秒
+        print("等待页面渲染完成 (20秒)...")
+        time.sleep(20) 
+        
+        # --- 核心修改：优化按钮选择器，精准匹配你截图里的蓝色按钮 ---
+        # 选择器意思：查找一个 button 元素，它的文本是 "Yes, get this app back up!"
+        target_selectors = [
+            'button:has-text("Yes, get this app back up!")', # 精准匹配
+            'button:has-text("Wake it up")',                  # 备选旧版
+            'button[kind="primary"]'                         # 备选样式
+        ]
+        
+        clicked = False
+        for selector in target_selectors:
+            button = page.locator(selector)
+            # 检查按钮是否存在并且可见
+            if button.count() > 0 and button.first.is_visible():
+                print(f"成功找到休眠按钮 (选择器: {selector})，正在点击唤醒...")
+                try:
+                    button.first.click()
+                    clicked = True
+                    # 唤醒需要一些时间启动容器
+                    print("已点击唤醒按钮，正在等待应用启动 (25秒)...")
+                    time.sleep(25)
+                    print("唤醒指令已发送！")
+                    break # 找到并点击后退出循环
+                except Exception as e:
+                    print(f"点击按钮失败: {e}")
+                
+        if not clicked:
+            print("应用未显示休眠状态，或未检测到休眠按钮（可能已在运行）。")
+            # 调试：如果有问题，这里可以选择打印页面 HTML 内容进行排查
+            # print(page.content())
+                
         browser.close()
 
 if __name__ == "__main__":
