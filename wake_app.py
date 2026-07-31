@@ -2,7 +2,7 @@ import time
 from playwright.sync_api import sync_playwright
 
 # 1. 替换为你的 Streamlit 应用真实 URL
-APP_URL = "https://你的应用名字.streamlit.app"
+APP_URL = "https://chyuy2rgszgsw6xrujaqvv.streamlit.app"
 
 def wake_up():
     with sync_playwright() as p:
