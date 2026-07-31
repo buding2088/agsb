@@ -13,4 +13,4 @@ jobs:
       - name: Ping Streamlit App
         run: |
           # 替换为你的 Streamlit 实际应用链接
-          curl -s -o /dev/null -w "%{http_code}" https://share.streamlit.io
+          curl -s -o /dev/null -w "%{http_code}" https://chyuy2rgszgsw6xrujaqvv.streamlit.app
